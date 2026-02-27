@@ -22,7 +22,12 @@ jobs:
       - name: Wait for JMeter to finish
         run: docker wait perf-jmeter
 
+      - name: Install Python dependencies
+        run: pip install requests
+
       - name: Run AI Analysis
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: python ai/ai_analyze_results.py
 
       - name: Upload Artifacts

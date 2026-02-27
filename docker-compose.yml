@@ -14,9 +14,12 @@ services:
     volumes:
       - ./jmeter:/tests
       - ./reports:/results
-    command: >
-      -n
+    entrypoint: >
+      sh -c "
+      sleep 10 &&
+      jmeter -n
       -t /tests/Eph_Per_Local.jmx
       -l /results/results.jtl
       -e
       -o /results/report
+      "
