@@ -1,0 +1,22 @@
+services:
+
+  nginx:
+    build: ./app
+    container_name: perf-nginx
+    ports:
+      - "8080:80"
+
+  jmeter:
+    image: justb4/jmeter:latest
+    container_name: perf-jmeter
+    depends_on:
+      - nginx
+    volumes:
+      - ./jmeter:/tests
+      - ./reports:/results
+    command: >
+      -n
+      -t /tests/Eph_Per_Local.jmx
+      -l /results/results.jtl
+      -e
+      -o /results/report

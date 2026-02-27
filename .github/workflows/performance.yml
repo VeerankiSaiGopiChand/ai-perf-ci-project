@@ -1,0 +1,37 @@
+name: AI Performance Testing CI
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  performance-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Create reports folder
+        run: mkdir -p reports
+
+      - name: Start Docker Compose
+        run: docker compose up --build -d
+
+      - name: Wait for JMeter to finish
+        run: docker wait perf-jmeter
+
+      - name: Run AI Analysis
+        run: python ai/ai_analyze_results.py
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-artifacts
+          path: |
+            reports/report
+            reports/ai_summary.txt
+
+      - name: Cleanup Containers
+        run: docker compose down -v
