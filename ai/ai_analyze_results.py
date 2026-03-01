@@ -7,6 +7,7 @@ RESULT_FILE = "reports/results.jtl"
 TECH_FILE = "reports/technical_summary.txt"
 BUSINESS_FILE = "reports/business_summary.txt"
 CAPACITY_FILE = "reports/capacity_forecast.txt"
+SCALING_FILE = "reports/scaling_recommendation.txt"
 CURRENT_METRIC_FILE = "metrics/current_metrics.json"
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
@@ -93,7 +94,7 @@ def calculate_customer_impact(risk):
 
 
 # --------------------------------
-# STEP 3: Predictive Capacity Model (NEW)
+# STEP 3: Predictive Capacity Model
 # --------------------------------
 def predictive_capacity_model(metrics):
 
@@ -137,7 +138,50 @@ def predictive_capacity_model(metrics):
 
 
 # --------------------------------
-# STEP 4: Generate Technical Summary
+# STEP 4: Scaling Recommendation Engine
+# --------------------------------
+def generate_scaling_recommendation(metrics, predictions):
+
+    current_score = metrics["health_score"]
+
+    safe_limit = 0
+    for p in predictions:
+        if p["predicted_health_score"] >= 70:
+            safe_limit = int((p["traffic_multiplier"] - 1) * 100)
+
+    if current_score >= 85:
+        strategy = "System stable. Prepare horizontal scaling for growth."
+        replicas = "Increase replicas from 1 → 2 (proactive scaling)"
+    elif current_score >= 65:
+        strategy = "Moderate risk. Immediate scaling recommended."
+        replicas = "Increase replicas from 1 → 3"
+    else:
+        strategy = "High risk detected. Immediate scaling required."
+        replicas = "Increase replicas from 1 → 4+ and review resource limits"
+
+    recommendation = f"""
+AI SCALING RECOMMENDATION REPORT
+
+Current Health Score: {current_score}/100
+Safe Traffic Growth: ~{safe_limit}%
+
+Recommended Strategy:
+{strategy}
+
+Scaling Action:
+{replicas}
+
+Operational Advice:
+- Enable CPU-based autoscaling at 65%
+- Monitor error rate threshold at 2%
+- Review database connection pool limits
+"""
+
+    return recommendation
+
+
+# --------------------------------
+# STEP 5: Generate Technical Summary
 # --------------------------------
 def generate_technical_summary(metrics):
     return f"""
@@ -153,12 +197,11 @@ Risk Level: {metrics['risk_level']}
 
 
 # --------------------------------
-# STEP 5: Generate Business Summary
+# STEP 6: Generate Business Summary
 # --------------------------------
 def generate_business_summary(metrics):
 
-    if not OPENAI_API_KEY:
-        return f"""
+    return f"""
 BUSINESS PERFORMANCE SUMMARY
 
 Performance Health Score: {metrics['health_score']} / 100
@@ -167,48 +210,6 @@ SLA Breach Probability: {metrics['sla_probability']}
 Customer Impact: {metrics['customer_impact']}
 
 System stability is classified as {metrics['risk_level']} under current workload.
-"""
-
-    prompt = f"""
-Provide a business-level executive summary based on:
-
-Performance Health Score: {metrics['health_score']} / 100
-Risk Level: {metrics['risk_level']}
-SLA Breach Probability: {metrics['sla_probability']}
-Customer Impact: {metrics['customer_impact']}
-
-Explain impact on users and business operations.
-"""
-
-    try:
-        response = requests.post(
-            "https://api.openai.com/v1/chat/completions",
-            headers={
-                "Authorization": f"Bearer {OPENAI_API_KEY}",
-                "Content-Type": "application/json"
-            },
-            json={
-                "model": "gpt-4o-mini",
-                "messages": [{"role": "user", "content": prompt}],
-                "temperature": 0.3
-            },
-            timeout=15
-        )
-
-        if response.status_code != 200:
-            raise Exception("API Error")
-
-        data = response.json()
-        return data["choices"][0]["message"]["content"]
-
-    except:
-        return f"""
-BUSINESS PERFORMANCE SUMMARY
-
-Performance Health Score: {metrics['health_score']} / 100
-Risk Level: {metrics['risk_level']}
-SLA Breach Probability: {metrics['sla_probability']}
-Customer Impact: {metrics['customer_impact']}
 """
 
 
@@ -258,4 +259,10 @@ Predicted Health Score: {p['predicted_health_score']}/100
     with open(CAPACITY_FILE, "w") as f:
         f.write(capacity_text)
 
-    print("Phase 3B Complete: Scoring + Risk + Capacity Forecast Generated")
+    # Scaling Recommendation
+    scaling_text = generate_scaling_recommendation(metrics, predictions)
+
+    with open(SCALING_FILE, "w") as f:
+        f.write(scaling_text)
+
+    print("Phase 3C Complete: Scoring + Prediction + Scaling Intelligence Generated")
