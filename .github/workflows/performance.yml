@@ -37,6 +37,8 @@ jobs:
           path: |
             reports/report
             reports/ai_summary.txt
+            metrics/current_metrics.json
 
       - name: Cleanup Containers
+        if: always()
         run: docker compose down -v
