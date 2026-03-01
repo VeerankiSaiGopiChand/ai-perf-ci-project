@@ -1,14 +1,19 @@
 import csv
 import os
-import requests
 import json
-import sys
+import requests
 
 RESULT_FILE = "reports/results.jtl"
-SUMMARY_FILE = "reports/ai_summary.txt"
+TECH_FILE = "reports/technical_summary.txt"
+BUSINESS_FILE = "reports/business_summary.txt"
 CURRENT_METRIC_FILE = "metrics/current_metrics.json"
+
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
+
+# --------------------------------
+# STEP 1: Extract Metrics
+# --------------------------------
 def extract_metrics(file_path):
     total_time = 0
     count = 0
@@ -32,37 +37,102 @@ def extract_metrics(file_path):
     }
 
 
-def fallback_summary(metrics):
-    status = "stable"
+# --------------------------------
+# STEP 2: Health Score Logic
+# --------------------------------
+def calculate_health_score(metrics):
+    score = 100
+
+    if metrics["avg_response_time"] > 1000:
+        score -= 40
+    elif metrics["avg_response_time"] > 500:
+        score -= 20
+    elif metrics["avg_response_time"] > 300:
+        score -= 10
 
     if metrics["error_rate"] > 5:
-        status = "unstable"
-    elif metrics["avg_response_time"] > 1000:
-        status = "performance degradation observed"
+        score -= 40
+    elif metrics["error_rate"] > 2:
+        score -= 20
+    elif metrics["error_rate"] > 1:
+        score -= 10
 
+    return max(score, 0)
+
+
+def classify_risk(score):
+    if score >= 85:
+        return "LOW"
+    elif score >= 65:
+        return "MEDIUM"
+    elif score >= 40:
+        return "HIGH"
+    else:
+        return "CRITICAL"
+
+
+def calculate_sla_probability(metrics):
+    if metrics["error_rate"] > 5 or metrics["avg_response_time"] > 1000:
+        return "HIGH"
+    elif metrics["error_rate"] > 2 or metrics["avg_response_time"] > 500:
+        return "MEDIUM"
+    else:
+        return "LOW"
+
+
+def calculate_customer_impact(risk):
+    if risk == "LOW":
+        return "Minimal"
+    elif risk == "MEDIUM":
+        return "Moderate"
+    elif risk == "HIGH":
+        return "Significant"
+    else:
+        return "Severe"
+
+
+# --------------------------------
+# STEP 3: Generate Technical Summary
+# --------------------------------
+def generate_technical_summary(metrics):
     return f"""
-AI Performance Summary (Fallback Mode)
+TECHNICAL PERFORMANCE SUMMARY
 
 Total Requests: {metrics['total_requests']}
 Average Response Time: {metrics['avg_response_time']:.2f} ms
 Error Rate: {metrics['error_rate']:.2f} %
 
-System assessment: The system is {status} under the tested load.
+Health Score: {metrics['health_score']}/100
+Risk Level: {metrics['risk_level']}
 """
 
 
-def generate_ai_summary(metrics):
+# --------------------------------
+# STEP 4: Generate Business Summary (AI Optional)
+# --------------------------------
+def generate_business_summary(metrics):
+
     if not OPENAI_API_KEY:
-        return fallback_summary(metrics)
+        return f"""
+BUSINESS PERFORMANCE SUMMARY
+
+Performance Health Score: {metrics['health_score']} / 100
+Risk Level: {metrics['risk_level']}
+SLA Breach Probability: {metrics['sla_probability']}
+Customer Impact: {metrics['customer_impact']}
+
+System stability is classified as {metrics['risk_level']} under current workload.
+"""
 
     prompt = f"""
-Analyze these performance test results:
+Provide a business-level executive summary based on:
 
-Total Requests: {metrics['total_requests']}
-Average Response Time: {metrics['avg_response_time']:.2f} ms
-Error Rate: {metrics['error_rate']:.2f} %
+Performance Health Score: {metrics['health_score']} / 100
+Risk Level: {metrics['risk_level']}
+SLA Breach Probability: {metrics['sla_probability']}
+Customer Impact: {metrics['customer_impact']}
 
-Provide a concise executive-level performance summary.
+Explain impact on users and business operations.
 """
 
     try:
@@ -81,27 +151,49 @@ Provide a concise executive-level performance summary.
         )
 
         if response.status_code != 200:
-            return fallback_summary(metrics)
+            raise Exception("API Error")
 
         data = response.json()
         return data["choices"][0]["message"]["content"]
 
-    except Exception:
-        return fallback_summary(metrics)
+    except:
+        return f"""
+BUSINESS PERFORMANCE SUMMARY
+
+Performance Health Score: {metrics['health_score']} / 100
+Risk Level: {metrics['risk_level']}
+SLA Breach Probability: {metrics['sla_probability']}
+Customer Impact: {metrics['customer_impact']}
+"""
 
 
+# --------------------------------
+# MAIN EXECUTION
+# --------------------------------
 if __name__ == "__main__":
+
     os.makedirs("metrics", exist_ok=True)
 
     metrics = extract_metrics(RESULT_FILE)
 
-    # Save current metrics
+    # Calculate intelligence layer
+    metrics["health_score"] = calculate_health_score(metrics)
+    metrics["risk_level"] = classify_risk(metrics["health_score"])
+    metrics["sla_probability"] = calculate_sla_probability(metrics)
+    metrics["customer_impact"] = calculate_customer_impact(metrics["risk_level"])
+
+    # Save structured metrics
     with open(CURRENT_METRIC_FILE, "w") as f:
         json.dump(metrics, f, indent=4)
 
-    summary = generate_ai_summary(metrics)
+    # Generate summaries
+    technical_summary = generate_technical_summary(metrics)
+    business_summary = generate_business_summary(metrics)
 
-    with open(SUMMARY_FILE, "w") as f:
-        f.write(summary)
+    with open(TECH_FILE, "w") as f:
+        f.write(technical_summary)
 
-    print("AI Summary + Metrics Stored Successfully")
+    with open(BUSINESS_FILE, "w") as f:
+        f.write(business_summary)
+
+    print("Phase 3A Complete: Technical + Business summaries generated.")

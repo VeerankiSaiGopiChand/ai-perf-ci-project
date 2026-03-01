@@ -36,7 +36,8 @@ jobs:
           name: performance-artifacts
           path: |
             reports/report
-            reports/ai_summary.txt
+            reports/technical_summary.txt
+            reports/business_summary.txt
             metrics/current_metrics.json
 
       - name: Cleanup Containers
