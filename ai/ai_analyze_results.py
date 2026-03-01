@@ -6,6 +6,7 @@ import requests
 RESULT_FILE = "reports/results.jtl"
 TECH_FILE = "reports/technical_summary.txt"
 BUSINESS_FILE = "reports/business_summary.txt"
+CAPACITY_FILE = "reports/capacity_forecast.txt"
 CURRENT_METRIC_FILE = "metrics/current_metrics.json"
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
@@ -92,7 +93,51 @@ def calculate_customer_impact(risk):
 
 
 # --------------------------------
-# STEP 3: Generate Technical Summary
+# STEP 3: Predictive Capacity Model (NEW)
+# --------------------------------
+def predictive_capacity_model(metrics):
+
+    base_response = metrics["avg_response_time"]
+    base_error = metrics["error_rate"]
+
+    scenarios = [1.25, 1.5, 2.0]
+
+    predictions = []
+
+    for multiplier in scenarios:
+        predicted_response = base_response * multiplier
+        predicted_error = base_error * multiplier
+
+        predicted_health = 100
+
+        if predicted_response > 1000:
+            predicted_health -= 40
+        elif predicted_response > 500:
+            predicted_health -= 20
+        elif predicted_response > 300:
+            predicted_health -= 10
+
+        if predicted_error > 5:
+            predicted_health -= 40
+        elif predicted_error > 2:
+            predicted_health -= 20
+        elif predicted_error > 1:
+            predicted_health -= 10
+
+        predicted_health = max(predicted_health, 0)
+
+        predictions.append({
+            "traffic_multiplier": multiplier,
+            "predicted_response_time": round(predicted_response, 2),
+            "predicted_error_rate": round(predicted_error, 2),
+            "predicted_health_score": predicted_health
+        })
+
+    return predictions
+
+
+# --------------------------------
+# STEP 4: Generate Technical Summary
 # --------------------------------
 def generate_technical_summary(metrics):
     return f"""
@@ -108,7 +153,7 @@ Risk Level: {metrics['risk_level']}
 
 
 # --------------------------------
-# STEP 4: Generate Business Summary (AI Optional)
+# STEP 5: Generate Business Summary
 # --------------------------------
 def generate_business_summary(metrics):
 
@@ -176,13 +221,13 @@ if __name__ == "__main__":
 
     metrics = extract_metrics(RESULT_FILE)
 
-    # Calculate intelligence layer
+    # Intelligence Layer
     metrics["health_score"] = calculate_health_score(metrics)
     metrics["risk_level"] = classify_risk(metrics["health_score"])
     metrics["sla_probability"] = calculate_sla_probability(metrics)
     metrics["customer_impact"] = calculate_customer_impact(metrics["risk_level"])
 
-    # Save structured metrics
+    # Save JSON
     with open(CURRENT_METRIC_FILE, "w") as f:
         json.dump(metrics, f, indent=4)
 
@@ -196,4 +241,21 @@ if __name__ == "__main__":
     with open(BUSINESS_FILE, "w") as f:
         f.write(business_summary)
 
-    print("Phase 3A Complete: Technical + Business summaries generated.")
+    # Capacity Forecast
+    predictions = predictive_capacity_model(metrics)
+
+    capacity_text = "CAPACITY FORECAST REPORT\n"
+
+    for p in predictions:
+        capacity_text += f"""
+Traffic Increase: {int(p['traffic_multiplier']*100)}%
+Predicted Response Time: {p['predicted_response_time']} ms
+Predicted Error Rate: {p['predicted_error_rate']} %
+Predicted Health Score: {p['predicted_health_score']}/100
+-----------------------------------
+"""
+
+    with open(CAPACITY_FILE, "w") as f:
+        f.write(capacity_text)
+
+    print("Phase 3B Complete: Scoring + Risk + Capacity Forecast Generated")

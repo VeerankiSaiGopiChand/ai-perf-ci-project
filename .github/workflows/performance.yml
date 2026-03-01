@@ -38,6 +38,7 @@ jobs:
             reports/report
             reports/technical_summary.txt
             reports/business_summary.txt
+            reports/capacity_forecast.txt
             metrics/current_metrics.json
 
       - name: Cleanup Containers
