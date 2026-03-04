@@ -25,14 +25,14 @@ Analyze the following JMeter results and produce a short performance summary.
 {data}
 
 Provide:
-1. Overall system health
-2. Risk level
-3. SLA breach probability
-4. Scaling recommendation
+- Overall system health
+- Risk level
+- SLA breach probability
+- Scaling recommendation
 """
 
     response = client.models.generate_content(
-        model="models/gemini-1.5-flash",
+        model="gemini-2.0-flash",
         contents=prompt
     )
 
