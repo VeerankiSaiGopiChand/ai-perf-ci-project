@@ -4,6 +4,7 @@ from google import genai
 RESULT_FILE = "reports/results.jtl"
 OUTPUT_FILE = "reports/ai_summary.txt"
 
+
 def read_results():
     try:
         with open(RESULT_FILE, "r") as f:
@@ -24,15 +25,15 @@ Analyze the following JMeter results and produce a short performance summary.
 {data}
 
 Provide:
-- System health
-- Risk level
-- SLA breach probability
-- Scaling recommendation
+1. Overall system health
+2. Risk level
+3. SLA breach probability
+4. Scaling recommendation
 """
 
     response = client.models.generate_content(
-        model="gemini-1.5-flash",
-        contents=prompt,
+        model="models/gemini-1.5-flash",
+        contents=prompt
     )
 
     return response.text
@@ -47,4 +48,4 @@ if __name__ == "__main__":
     with open(OUTPUT_FILE, "w") as f:
         f.write(summary)
 
-    print("Gemini AI analysis completed.")
+    print("Gemini AI analysis completed successfully.")
