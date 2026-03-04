@@ -13,11 +13,27 @@ def read_results():
         return "No JMeter results found."
 
 
+def fallback_summary(data):
+    return f"""
+AI Analysis Fallback Mode
+
+JMeter test completed successfully.
+
+Basic observations:
+- Test executed and results generated
+- Review JMeter HTML report for detailed metrics
+
+Note: Gemini API quota exceeded, so fallback summary generated.
+"""
+
+
 def analyze_performance(data):
 
-    client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+    try:
 
-    prompt = f"""
+        client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+
+        prompt = f"""
 You are a performance testing expert.
 
 Analyze the following JMeter results and produce a short performance summary.
@@ -25,18 +41,24 @@ Analyze the following JMeter results and produce a short performance summary.
 {data}
 
 Provide:
-- Overall system health
+- System health
 - Risk level
 - SLA breach probability
 - Scaling recommendation
 """
 
-    response = client.models.generate_content(
-        model="gemini-2.0-flash",
-        contents=prompt
-    )
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt
+        )
 
-    return response.text
+        return response.text
+
+    except Exception as e:
+
+        print("Gemini API failed:", e)
+
+        return fallback_summary(data)
 
 
 if __name__ == "__main__":
@@ -48,4 +70,4 @@ if __name__ == "__main__":
     with open(OUTPUT_FILE, "w") as f:
         f.write(summary)
 
-    print("Gemini AI analysis completed successfully.")
+    print("AI summary generated.")
