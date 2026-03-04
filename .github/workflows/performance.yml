@@ -23,8 +23,8 @@ jobs:
       - name: Wait for JMeter to finish
         run: docker wait perf-jmeter
 
-      - name: Install Gemini library
-        run: pip install google-generativeai
+      - name: Install Gemini SDK
+        run: pip install google-genai
 
       - name: Run Gemini AI Analysis
         env:

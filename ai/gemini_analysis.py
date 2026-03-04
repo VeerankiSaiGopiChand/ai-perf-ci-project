@@ -1,14 +1,8 @@
 import os
-import google.generativeai as genai
+from google import genai
 
 RESULT_FILE = "reports/results.jtl"
 OUTPUT_FILE = "reports/ai_summary.txt"
-
-# Configure Gemini API
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-
-model = genai.GenerativeModel("gemini-pro")
-
 
 def read_results():
     try:
@@ -20,10 +14,12 @@ def read_results():
 
 def analyze_performance(data):
 
+    client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+
     prompt = f"""
 You are a performance testing expert.
 
-Analyze the following JMeter test results and produce a short performance summary.
+Analyze the following JMeter results and produce a short performance summary.
 
 {data}
 
@@ -34,7 +30,10 @@ Provide:
 - Scaling recommendation
 """
 
-    response = model.generate_content(prompt)
+    response = client.models.generate_content(
+        model="gemini-1.5-flash",
+        contents=prompt,
+    )
 
     return response.text
 
